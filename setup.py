@@ -21,6 +21,9 @@ setup(
         "console_scripts": [
             "seer_control = seer_system.seer_control:main",
             "test = seer_system.sever_:main",
+            "communication_modbus = seer_system.communication_modbus:main",
+            "lift_control = seer_system.lift_control:main",
+            "led_control = seer_system.led_control:main",
         ],
     },
 )

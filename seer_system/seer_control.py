@@ -65,7 +65,7 @@ class SeerControl(Node):
         )
         # self._action_client = ActionClient(self, Fibonacci, "fibonacci")
         self.flag = False
-        self._n_mission = 0
+        self._step_mission = 0
         self._pre_n_mission = 0
         self._misison_task = 0
         self._dict_mission = {}
@@ -73,13 +73,14 @@ class SeerControl(Node):
         self.robot_mode = True
         # robot_mode = True // == auto  or false == manual
 
-        self.robot_status = "IDE"
+        self.robot_status = "run"
+        self.robot_status_publisher_ = self.create_publisher(String, "robot_status", 10)
 
         @app.post("/sent_mission")
         async def sent_mission(mission_had_sent: dict):
             # self.send_goal(mission_occupy)
             # self.send_goal(mission_occupy)
-            if not self._n_mission:
+            if not self._step_mission:
                 activity_mission = self.comfirm_misison(mission_had_sent)
                 self._action_list = activity_mission
                 # self._dict_mission = mission_occupy
@@ -94,7 +95,7 @@ class SeerControl(Node):
     def comfirm_misison(self, mission):
 
         # _list_mission = list(self._dict_mission.values())[0]
-        # self._n_mission = len(_list_mission)
+        # self._step_mission = len(_list_mission)
         if mission["activity_type"]:
             # comfirm mission to fleet
             pass
@@ -102,14 +103,14 @@ class SeerControl(Node):
 
     def parse_mission(self):
 
-        # while self._n_mission != 0:
+        # while self._step_mission != 0:
         self.get_logger().info('_dict_mission: "%s"' % ("asdasd"))
-        if self._pre_n_mission != self._n_mission:
-            # self._n_mission = self._n_mission - 1
+        if self._pre_n_mission != self._step_mission:
+            # self._step_mission = self._step_mission - 1
             # self.get_logger().info('_dict_mission: "%s"' % (self._dict_mission))
             self._misison_task = self._misison_task + 1
 
-            self.get_logger().info('self.flag on looop : "%s"' % (self._n_mission))
+            self.get_logger().info('self.flag on looop : "%s"' % (self._step_mission))
             self._action_client = ActionClient(
                 self, Fibonacci, self._action_list[0]["name"]
             )
@@ -123,7 +124,7 @@ class SeerControl(Node):
             #     self.get_logger().info('value: "%s"' % _n_value)
 
             self.send_goal(_n_value)
-            self._pre_n_mission = self._n_mission
+            self._pre_n_mission = self._step_mission
 
         # pass
 
@@ -159,16 +160,24 @@ class SeerControl(Node):
             #     value.pop(0)
             # self.flag = False
 
+    def pub_robot_status(self):
+        msg = String()
+        _msg = {"robot_status": self.robot_status, "robot_mode": self.robot_mode}
+        msg.data = str(_msg)
+        self.robot_status_publisher_.publish(msg)
+
     def main_loop(self) -> None:
         # pass
 
-        self._n_mission = len(self._action_list)
-        if self._n_mission != 0:
+        self._step_mission = len(self._action_list)
+        if self._step_mission != 0:
             self.parse_mission()
         else:
-            self._misison_task = self._n_mission
+            self._misison_task = self._step_mission
+        self.pub_robot_status()
+
         self.get_logger().info('_action_list: "%s"' % (self._action_list))
-        self.get_logger().info('_n_mission: "%s"' % (self._n_mission))
+        self.get_logger().info('_n_mission: "%s"' % (self._step_mission))
 
     def msg2json(self, msg):
         # y = json.load(str(msg))
