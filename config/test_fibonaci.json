@@ -1,0 +1,21 @@
+{
+    "mission_code" : "minhdeptrai",
+    "activity_type" : true,
+    "actions": [
+        {
+            "name": "fibonacci",
+            "params": {
+                "angle": 0.0,
+                "msg": "Fibonacci",
+                "number" : 5
+            },
+            "type": "relative_move"
+        },
+        {
+            "name": "fibonacci",
+            "params": {"desired_speed": 0.6 , "number" : 4 , "msg": "Fibonacci"},
+            "type": "planner_setting"
+        }
+    
+    ]
+}

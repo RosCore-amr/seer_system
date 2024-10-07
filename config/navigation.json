@@ -1,0 +1,14 @@
+{
+    "mission_code" : "minhdeptrai",
+    "activity_type" : true,
+    "actions": [
+        {
+            "name": "action_navigation",
+            "params": {
+                "msg": "Mission",
+                "position" : "LM33",
+                "timeout": 0.5
+            }
+        }
+    ]
+}

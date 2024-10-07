@@ -88,6 +88,8 @@ class LedControlSeer(Node):
         return _modbus_response
 
     def main_loop(self):
+
+        light_set = "white"
         if self.current_status_robot == "emergency":
             light_set = "red"
         elif self.current_status_robot == "run":

@@ -1,22 +1,30 @@
 {
-    "mission_code" : "minhdeptrai",
+    "mission_code" : "MISSION-0-10-01-16:27:05",
     "activity_type" : true,
     "actions": [
         {
-            "name": "fibonacci",
+            "name": "action_navigation",
             "params": {
-                "msg": "Fibonacci",
-                "number" : 3,
+                "msg": "Mission",
+                "position" : "LM33",
                 "timeout": 0.5
             }
         },
         {
-            "name": "fibonacci",
-            "params": {"desired_speed": 0.6 , "number" : 4 , "msg": "Fibonacci"},
+            "name": "action_lift",
+            "params": {"desired_speed": 0.6 , "lift" : true , "msg": "Fibonacci"},
             "type": "planner_setting"
         },
         {
-            "name": "fibonacci",
+            "name": "action_navigation",
+            "params": {
+                "msg": "Mission",
+                "position" : "LM1",
+                "timeout": 0.5
+            }
+        },
+        {
+            "name": "action_map",
             "params": {
                 "angle": 0.0,
                 "msg": "Fibonacci",
