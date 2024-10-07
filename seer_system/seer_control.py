@@ -72,6 +72,7 @@ class SeerControl(Node):
         self._action_list = []
         self.robot_mode = True
         self.robot_error = False
+        self.action_activity = ""
 
         # robot_mode = True // == auto  or false == manual
 
@@ -82,17 +83,22 @@ class SeerControl(Node):
         async def sent_mission(mission_had_sent: dict):
             # self.send_goal(mission_occupy)
             # self.send_goal(mission_occupy)
-            # if not self._step_mission:
-            activity_mission = self.comfirm_misison(mission_had_sent)
-            self._action_list = activity_mission
-            # self._dict_mission = mission_occupy
-            # self.occupy_mission()
-            # self._misison_task = 0
-            # return {"call mission success"}
+            if not self._step_mission:
+                activity_mission = self.comfirm_misison(mission_had_sent)
+                self._action_list = activity_mission
+                # self._dict_mission = mission_occupy
+                # self.occupy_mission()
+                # self._misison_task = 0
+                return {"call mission success"}
             return {"robot have mission"}
 
-            # for key, value in mission_occupy.items():
-            #     pass
+        @app.post("/clear_action")
+        async def clear_action(clear_action: bool):
+            if clear_action:
+                self._action_list = []
+                self.action_activity = ""
+                self.robot_error = False
+            return {"clear success"}
 
     def comfirm_misison(self, mission):
 
@@ -117,6 +123,7 @@ class SeerControl(Node):
                 self, Mission, self._action_list[0]["name"]
             )
             _n_value = str(self._action_list[0]["params"])
+            self.action_activity = _n_value
 
             # for key, parameter_req in self._dict_mission.items():
             #     self._action_client = ActionClient(
@@ -173,11 +180,7 @@ class SeerControl(Node):
 
     def robot_error_process(self):
         if self.robot_error:
-            for key, parameter_req in self._dict_mission.items():
-                # self._action_client = ActionClient(
-                #     self, Fibonacci, parameter_req[0]["name"]
-                # )
-                self.get_logger().info("parameter_req: {0}".format(parameter_req))
+            self.get_logger().info('robot_error: "%s"' % (self.robot_error))
 
     def pub_robot_status(self):
         msg = String()
@@ -190,17 +193,16 @@ class SeerControl(Node):
 
         self._step_mission = len(self._action_list)
         if self._step_mission != 0:
-            # self._pre_n_mission = 0
             # self.robot_error_process()
             self.parse_mission()
-        else:
-            self._misison_task = self._step_mission
-            self._pre_n_mission = self._step_mission
-
+        # else:
+        self.robot_error_process()
+        self._misison_task = self._step_mission
+        self._pre_n_mission = self._step_mission
         self.pub_robot_status()
         # self._pre_n_mission = self._step_mission
         self.get_logger().info('_pre_n_mission: "%s"' % (self._pre_n_mission))
-        self.get_logger().info('_n_mission: "%s"' % (self._step_mission))
+        self.get_logger().info('_step_mission: "%s"' % (self._step_mission))
 
     def msg2json(self, msg):
         # y = json.load(str(msg))

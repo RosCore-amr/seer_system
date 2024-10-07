@@ -11,30 +11,28 @@
             }
         },
         {
-            "name": "action_lift",
-            "params": {"desired_speed": 0.6 , "lift" : true , "msg": "Fibonacci"},
-            "type": "planner_setting"
+            "name": "action_lifting",
+            "params": {
+                "msg": "Mission",
+                "lift" : "up",
+                "timeout": 2
+            }
         },
         {
             "name": "action_navigation",
             "params": {
                 "msg": "Mission",
-                "position" : "LM1",
+                "position" : "LM33",
                 "timeout": 0.5
             }
         },
         {
-            "name": "action_map",
+            "name": "action_lifting",
             "params": {
-                "angle": 0.0,
-                "msg": "Fibonacci",
-                "number" : 5,
-                "max_angular_vel": 0.5,
-                "max_linear_vel": 0.5,
-                "x": 1.0,
-                "y": 1.0
-            },
-            "type": "relative_move"
+                "msg": "Mission",
+                "lift" : "down",
+                "timeout": 3
+            }
         }
     ]
 }

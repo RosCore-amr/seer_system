@@ -19,10 +19,10 @@ from rclpy.action import CancelResponse
 from rclpy.action import GoalResponse
 
 
-class LiftControlSeer(Node):
+class ChangeMap(Node):
 
     def __init__(self):
-        super().__init__("action_lifting_seer")
+        super().__init__("action_change_map_seer")
         self.timer_cb = MutuallyExclusiveCallbackGroup()
 
         self.timer = self.create_timer(
@@ -32,7 +32,7 @@ class LiftControlSeer(Node):
         self._action_server = ActionServer(
             self,
             Mission,
-            "action_lifting",
+            "action_change_map",
             execute_callback=self.execute_callback,
             callback_group=ReentrantCallbackGroup(),
             goal_callback=self.goal_callback,
@@ -150,9 +150,9 @@ class LiftControlSeer(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    action_lifting_seer = LiftControlSeer()
+    action_change_map_seer = ChangeMap()
     executor = MultiThreadedExecutor()
-    executor.add_node(action_lifting_seer)
+    executor.add_node(action_change_map_seer)
     executor.spin()
 
     rclpy.shutdown()

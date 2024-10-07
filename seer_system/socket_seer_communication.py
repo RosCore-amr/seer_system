@@ -158,8 +158,8 @@ class SockerControlSeer(Node):
         _request = eval(request.msg_request)
         # _response = self.sent_api_seer(
         #     self.navigation_connect_socket,
-        #     _request["api"],
-        #     _request["request_body"],
+        #     _request["seer_api"],
+        #     _request["request"],
         # )
 
         self.get_logger().info('_request: "%s"' % _request)

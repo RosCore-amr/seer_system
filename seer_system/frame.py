@@ -35,10 +35,10 @@ class tranmit:
         try:
             data = headerAPI.recv(16)
         except socket.timeout:
-            print("timeout")
+            # print("timeout")
             headerAPI.close()
         if len(data) < 16:
-            print("Pack head error")
+            # print("Pack head error")
             headerAPI.close()
         else:
             header = struct.unpack(PACK_FMT_STR, data)
@@ -57,4 +57,5 @@ class tranmit:
             data = json.loads(data)
             return data
         except socket.timeout:
-            print("timeout")
+            pass
+            # print("timeout")

@@ -1,0 +1,14 @@
+{
+    "mission_code" : "minhdeptrai",
+    "activity_type" : true,
+    "actions": [
+        {
+            "name": "action_lifting",
+            "params": {
+                "msg": "Mission",
+                "lift" : "up",
+                "timeout": 10
+            }
+        }
+    ]
+}

@@ -13,12 +13,14 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.action import ActionServer
 from rclpy.action import CancelResponse
 from rclpy.action import GoalResponse
+from seer_system.api import navigation
+import requests
 
 
 class NavigationControlSeer(Node):
 
     def __init__(self):
-        super().__init__("navigation_seer_control")
+        super().__init__("action_navigation_seer")
         self.timer_cb = MutuallyExclusiveCallbackGroup()
 
         self.timer = self.create_timer(
@@ -65,15 +67,22 @@ class NavigationControlSeer(Node):
 
         request_order = eval(goal_handle.request.order)
         _destination = request_order["position"]
+        resquest_seer = {
+            "seer_api": navigation.robot_task_gotarget_req,
+            "request": {"id": _destination},
+        }
+        sent_api_goal = self.processing_modbus_client(resquest_seer)
         self.get_logger().info('position: "%s"' % (request_order["position"]))
-        feedback_msg.operating_status = "sent_api_seer"
-        goal_handle.publish_feedback(feedback_msg)
         goal_handle.succeed()
         result = Mission.Result()
 
-        # if _destination != self.current_position:
-        #     self.get_logger().info('false position: "%s"' % (_destination))
-        #     result.success = False
+        if _destination != self.current_position:
+            self.get_logger().info('false position: "%s"' % (_destination))
+            result.success = False
+        else:
+            result.success = True
+
+        # {"id": "lm23"}
         # time.sleep(2)
         # sent_api_seer = goal_handle.request.order["position"]
 
@@ -88,9 +97,19 @@ class NavigationControlSeer(Node):
         #     )
         #     goal_handle.publish_feedback(feedback_msg)
         #     time.sleep(1)
-
-        result.success = False
+        feedback_msg.operating_status = "sent_api_seer"
+        goal_handle.publish_feedback(feedback_msg)
         return result
+
+    def check_target(self, data_status: dict, target: str):
+        # time.sleep(1)
+        if data_status["task_status"] == 4:
+            if (data_status["current_station"]) == target:
+                return True
+            else:
+                return False
+        else:
+            return False
 
     def processing_modbus_client(self, _request_body):
         req = CommonRequest.Request()
@@ -109,8 +128,30 @@ class NavigationControlSeer(Node):
     def seer_callback(self, msg):
         _seer_msg = msg.data
 
+    def comfirm_moving_collision(self):
+        request_body = {
+            # "robot_code": "robot_2",
+            "position_collision": ["Tmh"],
+            "map_code": "pickup_location",
+        }
+        try:
+            res = requests.post(
+                self.__url_gw + self.__device_control + self.__device_call,
+                headers=self.__token_gw,
+                json=request_body,
+                timeout=4,
+            )
+            response = res.json()
+            if not response:
+                return None
+
+            return response
+        except Exception as e:
+            return None
+
     def main_loop(self):
         pass
+        # self.comfirm_moving_collision()
         # response_modbus = self.frame_sent_modbus("up")
         # self.get_logger().info('response_modbus: "%s"' "loop run")
 
@@ -118,11 +159,11 @@ class NavigationControlSeer(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    navigation_seer_control = NavigationControlSeer()
+    action_navigation_seer = NavigationControlSeer()
     executor = MultiThreadedExecutor()
-    rclpy.spin(navigation_seer_control, executor=executor)
+    rclpy.spin(action_navigation_seer, executor=executor)
 
-    # executor.add_node(navigation_seer_control)
+    # executor.add_node(action_navigation)
     # executor.spin()
 
     rclpy.shutdown()
