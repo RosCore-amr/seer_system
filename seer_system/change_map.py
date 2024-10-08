@@ -17,6 +17,8 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.action import ActionServer
 from rclpy.action import CancelResponse
 from rclpy.action import GoalResponse
+import requests
+from rclpy.action import ActionClient
 
 
 class ChangeMap(Node):
@@ -38,55 +40,27 @@ class ChangeMap(Node):
             goal_callback=self.goal_callback,
             cancel_callback=self.cancel_callback,
         )
-
-        self.option = {"up": 2, "down": 1}
-        self.modbus_register = 1
-        self.cli_client_communication_modbus = self.create_client(
-            CommonRequest, "modbus_communication"
+        self.seer_response_subscription_ = self.create_subscription(
+            String, "seer_response", self.seer_callback, 10
         )
-        self.subscription_sensor_lift = self.create_subscription(
-            String, "lifting_sensor", self.sensor_lift_callback, 1
-        )
-        self.subscription_sensor_lift  # prevent unused variable warning
-        self.sensor_up = 0
-        self.sensor_down = 0
-        self.status_lift_up = True
-        self.status_lift_down = True
-        self.time_now = datetime.now(timezone.utc)
-
+        self._action_client = ActionClient(self, Mission, "action_navigation")
+        self.current_map = "pickup_location_xx"
+        self._next_step = False
         self.initial_protocol()
 
     def initial_protocol(self):
         pass
 
-    def sensor_lift_callback(self, msg):
-        _sensor_lift = eval(msg.data)
-        self.sensor_up = _sensor_lift["sensor_up"]
-        self.sensor_down = _sensor_lift["sensor_down"]
-        self.status_lift_up = bool(self.sensor_up and not self.sensor_down)
-        self.status_lift_down = bool(self.sensor_down and not self.sensor_up)
-        # self.get_logger().info('_sensor_lift: "%s"' % _sensor_lift)
-        # self.get_logger().info('status_lift_up: "%s"' % self.status_lift_up)
-        # self.get_logger().info('status_lift_down: "%s"' % self.status_lift_down)
-
     def goal_callback(self, goal_request):
         # Accepts or rejects a client request to begin an action
-        self.get_logger().info("Received goal request :)")
+        self.get_logger().info("Received goal request")
         self.goal = goal_request
         return GoalResponse.ACCEPT
 
     def cancel_callback(self, goal_handle):
         # Accepts or rejects a client request to cancel an action
-        self.get_logger().info("Received cancel request :(")
+        self.get_logger().info("Received cancel request :")
         return CancelResponse.ACCEPT
-
-    def target_status_lift(self, goal_lif):
-        if goal_lif == "up":
-            return self.status_lift_up
-        elif goal_lif == "down":
-            return self.status_lift_down
-        else:
-            return False
 
     async def execute_callback(self, goal_handle):
         self.get_logger().info("Executing goal...")
@@ -94,24 +68,24 @@ class ChangeMap(Node):
         # feedback_msg = Fibonacci.Feedback()
         feedback_msg = Mission.Feedback()
         request_order = eval(goal_handle.request.order)
-        # self.get_logger().info('request_order: "%s"' % (request_order))
-        lift_request = request_order["lift"]
-        _timeout = int(request_order["timeout"])
-        # response_modbus = self.frame_sent_modbus(lift_request)
-        expire = datetime.now(timezone.utc) + timedelta(seconds=_timeout)
-        self.get_logger().info('time out : "%s"' % (_timeout))
-        _time_sleep = True
-        while _time_sleep:
-            # self.get_logger().info('sleep time : "%s"' % (self.time_now))
-            if self.time_now > expire:
-                _time_sleep = False
-                _result_lift = self.target_status_lift(lift_request)
-                self.get_logger().info('_result_lift : "%s"' % (_result_lift))
-
+        self.get_logger().info('request_order: "%s"' % (request_order))
+        map_request = request_order["arrival_map"]
+        # _timeout = int(request_order["timeout"])
         goal_handle.succeed()
-
         result = Mission.Result()
-        result.success = _result_lift
+        if map_request == self.current_map:
+            result.success = True
+            return result
+
+        _elevator_and_change_map = False
+        while not _elevator_and_change_map:
+            request_body = str({"msg": "Mission", "position": "LM33", "timeout": 0.5})
+            sent_goal = self.send_goal(request_body)
+            if self._next_step:
+                self._next_step = False
+                _elevator_and_change_map = True
+
+        result.success = True
         return result
 
     def processing_modbus_client(self, _request_body):
@@ -130,16 +104,51 @@ class ChangeMap(Node):
 
         return None
 
-    def frame_sent_modbus(self, _option):
+    def post_data_api(self, url, value):
+        try:
+            res = requests.post(
+                url,
+                json=value,
+                # headers=self.token,
+                timeout=3,
+            )
 
-        _modbus_req = {
-            "address": self.modbus_register,
-            "value": self.option[_option],
-            "slave": 1,
-        }
-        modbus_response = self.processing_modbus_client(_modbus_req)
-        _modbus_response = eval(modbus_response.msg_response)
-        return _modbus_response
+            response_post_data = res.json()
+            return response_post_data
+        except Exception as e:
+            print("error update status mission")
+        return False
+
+    def send_goal(self, order):
+        goal_msg = Mission.Goal()
+        dict_order = eval(order)
+        # self.get_logger().info('dict_order: "%s"' % (dict_order["number"]))
+
+        goal_msg.order = order
+
+        self._action_client.wait_for_server()
+        self._send_goal_future = self._action_client.send_goal_async(goal_msg)
+        self._send_goal_future.add_done_callback(self.goal_response_callback)
+
+    def goal_response_callback(self, future):
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().info("Goal rejected :(")
+            return
+
+        # self.get_logger().info("Goal accepted :)")
+
+        self._get_result_future = goal_handle.get_result_async()
+        self._get_result_future.add_done_callback(self.get_result_callback)
+
+    def get_result_callback(self, future):
+        result = future.result().result
+        # self.get_logger().info("Result: {0}".format(result.success))
+        if result.success:
+            self._next_step = True
+
+    def seer_callback(self, msg):
+        _seer_msg = msg.data
 
     def main_loop(self):
         self.time_now = datetime.now(timezone.utc)

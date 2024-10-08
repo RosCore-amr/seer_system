@@ -3,11 +3,9 @@
     "activity_type" : true,
     "actions": [
         {
-            "name": "action_lifting",
+            "name": "action_change_map",
             "params": {
-                "msg": "Mission",
-                "lift" : "up",
-                "timeout": 4
+                "arrival_map": "pickup_locations"
             }
         }
     ]

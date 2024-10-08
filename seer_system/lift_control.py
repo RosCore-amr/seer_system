@@ -93,6 +93,11 @@ class LiftControlSeer(Node):
 
         # feedback_msg = Fibonacci.Feedback()
         feedback_msg = Mission.Feedback()
+        result = Mission.Result()
+        # if self.target_status_lift(lift_request):
+        #     result.success = True
+        #     return result
+
         request_order = eval(goal_handle.request.order)
         # self.get_logger().info('request_order: "%s"' % (request_order))
         lift_request = request_order["lift"]
@@ -100,17 +105,16 @@ class LiftControlSeer(Node):
         # response_modbus = self.frame_sent_modbus(lift_request)
         expire = datetime.now(timezone.utc) + timedelta(seconds=_timeout)
         self.get_logger().info('time out : "%s"' % (_timeout))
-        _time_sleep = True
-        while _time_sleep:
+        _time_sleep_enough = False
+        while not _time_sleep_enough:
             # self.get_logger().info('sleep time : "%s"' % (self.time_now))
             if self.time_now > expire:
-                _time_sleep = False
+                _time_sleep_enough = True
                 _result_lift = self.target_status_lift(lift_request)
                 self.get_logger().info('_result_lift : "%s"' % (_result_lift))
 
         goal_handle.succeed()
 
-        result = Mission.Result()
         result.success = _result_lift
         return result
 

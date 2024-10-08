@@ -131,7 +131,7 @@ class SeerControl(Node):
             #     )
             #     _n_value = parameter_req[0]["params"]["number"]
             # self.get_logger().info('value: "%s"' % _n_value["msg"])
-            # self.get_logger().info('_n_value: "%s"' % json.loads((_n_value)))
+            self.get_logger().info('_n_value: "%s"' % ((_n_value)))
 
             self.send_goal(_n_value)
             self._pre_n_mission = self._step_mission
@@ -170,13 +170,6 @@ class SeerControl(Node):
             self._action_list.pop(0)
         else:
             self.robot_error = True
-            # self.get_logger().info("Result: {0}".format(result.success))
-
-            # self._pre_n_mission = self._step_mission
-        # for key, value in self._dict_mission.items():
-        #     # self._action_client = ActionClient(self, Fibonacci, value[0]["params"])
-        #     value.pop(0)
-        # self.flag = False
 
     def robot_error_process(self):
         if self.robot_error:
@@ -201,8 +194,8 @@ class SeerControl(Node):
         self._pre_n_mission = self._step_mission
         self.pub_robot_status()
         # self._pre_n_mission = self._step_mission
-        self.get_logger().info('_pre_n_mission: "%s"' % (self._pre_n_mission))
-        self.get_logger().info('_step_mission: "%s"' % (self._step_mission))
+        # self.get_logger().info('_pre_n_mission: "%s"' % (self._pre_n_mission))
+        # self.get_logger().info('_step_mission: "%s"' % (self._step_mission))
 
     def msg2json(self, msg):
         # y = json.load(str(msg))
