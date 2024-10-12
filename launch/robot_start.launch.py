@@ -25,6 +25,21 @@ def generate_launch_description():
         # parameters=[config],
     )
 
+    seer_navigation_node = Node(
+        package=package_name,
+        # namespace="minhdeptria",
+        executable="navigation_control",
+        # name="sim",
+        # parameters=[config],
+    )
+
+    seer_lifting_node = Node(
+        package=package_name,
+        # namespace="minhdeptria",
+        executable="lift_control",
+        # name="sim",
+        # parameters=[config],
+    )
     # mockup_node = Node(
     #     package="amd_sevtsv",
     #     # namespace="minhdeptria",
@@ -33,4 +48,6 @@ def generate_launch_description():
     #     # parameters=[config],
     # )
 
-    return LaunchDescription([seer_control_system_node])
+    return LaunchDescription(
+        [seer_control_system_node, seer_lifting_node, seer_navigation_node]
+    )
