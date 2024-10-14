@@ -54,12 +54,12 @@ class NavigationControlSeer(Node):
             CommonRequest, "navigation_seer_api"
         )
         self.current_position = "LM33"
-        self.seer_response_subscription_ = self.create_subscription(
+        self.subscription_seer_response = self.create_subscription(
             String, "seer_response", self.seer_callback, 10
         )
         self.seer_status = {}
         self.working_robot = False
-        self.seer_response_subscription_
+        self.subscription_seer_response
 
     def goal_callback(self, goal_request):
         # Accepts or rejects a client request to begin an action

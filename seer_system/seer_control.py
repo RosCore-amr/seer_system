@@ -69,26 +69,35 @@ class SeerControl(Node):
         self._pre_n_mission = 0
         self._misison_task = 0
         self._dict_mission = {}
+        self.seer_status = {}
+        self.robot_information = {}
         self._action_list = []
         self.robot_mode = True
         self.robot_error = False
+        self.robot_safety_error = False
         self.action_activity = ""
+        self.mission_robot = None
+        self._url_sever = "http://192.168.1.7:5000/"
 
         # robot_mode = True // == auto  or false == manual
 
-        self.robot_status = "run"
+        self.robot_status = None
         self.robot_status_publisher_ = self.create_publisher(String, "robot_status", 10)
+        self.subscription_seer_response = self.create_subscription(
+            String, "seer_response", self.seer_callback, 10
+        )
+        self.subscription_seer_response
 
         @app.post("/sent_mission")
         async def sent_mission(mission_had_sent: dict):
             # self.send_goal(mission_occupy)
             # self.send_goal(mission_occupy)
             if not self._step_mission:
-                activity_mission = self.comfirm_misison(mission_had_sent)
-                self._action_list = activity_mission
-                # self._dict_mission = mission_occupy
-                # self.occupy_mission()
-                # self._misison_task = 0
+                activity_mission = self.check_mission_activities(mission_had_sent)
+                # self.get_logger().info('activity_mission: "%s"' % (activity_mission))
+                if not activity_mission["run_misison"]:
+                    return {"code": 0}
+                # self._action_list = activity_mission["mission"]
                 return {"call mission success"}
             return {"robot have mission"}
 
@@ -100,14 +109,37 @@ class SeerControl(Node):
                 self.robot_error = False
             return {"clear success"}
 
-    def comfirm_misison(self, mission):
+        @app.post("/change_robot_mode")
+        async def clear_action(mode_status: bool):
+            self.robot_mode = mode_status
+            if mode_status:
+                return {"robot_mode": "auto"}
+            # if clear_action:
+            #     self._action_list = []
+            #     self.action_activity = ""
+            #     self.robot_error = False
+            return {"robot_mode": "manual"}
+
+    def check_mission_activities(self, mission):
 
         # _list_mission = list(self._dict_mission.values())[0]
         # self._step_mission = len(_list_mission)
-        if mission["activity_type"]:
-            # comfirm mission to fleet
-            pass
-        return mission["actions"]
+        if not mission["activity_type"] and not self.robot_mode:
+            return {"run_misison": True, "mission": mission["actions"]}
+        elif mission["activity_type"] and self.robot_mode:
+            _dict_request_misison = {
+                "excute_code": mission["excute_code"],
+                "mission_code": mission["mission_code"],
+            }
+            self.mission_robot = mission["mission_code"]
+            request_sever = self.post_sever_request(
+                "robot_comfirm_mission", _dict_request_misison
+            )
+            self.get_logger().info('request_sever: "%s"' % (request_sever))
+
+            return {"run_misison": True, "mission": mission["actions"]}
+
+        return {"run_misison": False, "mission": None}
 
     def parse_mission(self):
 
@@ -172,8 +204,14 @@ class SeerControl(Node):
             self.robot_error = True
 
     def robot_error_process(self):
+        # self.mission_robot = None
         if self.robot_error:
             self.get_logger().info('robot_error: "%s"' % (self.robot_error))
+
+    def seer_callback(self, msg):
+        _seer_msg = eval(msg.data)
+        self.seer_status = _seer_msg
+        # self.get_logger().info('dict_order: "%s"' % (dict_order["number"]))
 
     def pub_robot_status(self):
         msg = String()
@@ -181,15 +219,68 @@ class SeerControl(Node):
         msg.data = str(_msg)
         self.robot_status_publisher_.publish(msg)
 
+    def post_sever_request(self, _url, _request_body):
+
+        # request_body = {
+        #     # "robot_code": "robot_2",
+        #     "position_collision": ["dasd"],
+        #     "map_code": "pickup_locations",
+        # }
+        self.get_logger().info('_url_sever: "%s"' % str(self._url_sever + _url))
+
+        try:
+            # res = requests.post(
+            #     str(self._url_sever + _url),
+            #     headers=self.__token_gw,
+            #     json=_request_body,
+            #     timeout=4,
+            # )
+            # response = res.json()
+            # if not response:
+            #     return None
+            return True
+            return response
+        except Exception as e:
+            return None
+
+    def main_processing(self) -> None:
+        if bool(self.seer_status):
+            if (
+                self.seer_status["emergency"]
+                or self.seer_status["blocked"]
+                or self.robot_error
+            ):
+                _robot_safety_error = True
+                self.robot_status = "ERROR"
+            if self.seer_status["battery_level"] < 40:
+                self.robot_status = "LOW_BATERY"
+                _robot_low_batery = True
+            if not _robot_safety_error and not _robot_low_batery:
+                _robot_safety_error = False
+                _robot_low_batery = False
+                if self._step_mission != 0:
+                    self.robot_status = "RUN"
+                else:
+                    self.robot_status = "IDLE"
+                    self.mission_robot = None
+                # if  self.seer_status["battery_level"]
+
+        _dict_request_misison = {}
+        request_sever = self.post_sever_request(
+            "update_robot_status", _dict_request_misison
+        )
+
+        self.robot_error_process()
+
     def main_loop(self) -> None:
         # pass
 
         self._step_mission = len(self._action_list)
+        # self.main_processing()
         if self._step_mission != 0:
             # self.robot_error_process()
             self.parse_mission()
         # else:
-        self.robot_error_process()
         self._misison_task = self._step_mission
         self._pre_n_mission = self._step_mission
         self.pub_robot_status()
