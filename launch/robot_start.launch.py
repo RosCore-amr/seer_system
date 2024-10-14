@@ -48,6 +48,4 @@ def generate_launch_description():
     #     # parameters=[config],
     # )
 
-    return LaunchDescription(
-        [seer_control_system_node, seer_lifting_node, seer_navigation_node]
-    )
+    return LaunchDescription([seer_control_system_node, seer_lifting_node])

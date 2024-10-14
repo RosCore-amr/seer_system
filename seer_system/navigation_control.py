@@ -15,6 +15,16 @@ from rclpy.action import CancelResponse
 from rclpy.action import GoalResponse
 from seer_system.api import navigation
 import requests
+from enum import Enum
+
+
+class TaskStatus(Enum):
+    # EXCEPTION = 0
+    # CREATE = 1
+    RUN = 2
+    STOP = 3
+    ARRIVE = 4
+    ERROR = 5
 
 
 class NavigationControlSeer(Node):
@@ -24,7 +34,7 @@ class NavigationControlSeer(Node):
         self.timer_cb = MutuallyExclusiveCallbackGroup()
 
         self.timer = self.create_timer(
-            2.0, self.main_loop, callback_group=self.timer_cb
+            0.5, self.main_loop, callback_group=self.timer_cb
         )
 
         # self._action_server = ActionServer(
@@ -47,6 +57,8 @@ class NavigationControlSeer(Node):
         self.seer_response_subscription_ = self.create_subscription(
             String, "seer_response", self.seer_callback, 10
         )
+        self.seer_status = {}
+        self.working_robot = False
         self.seer_response_subscription_
 
     def goal_callback(self, goal_request):
@@ -71,16 +83,27 @@ class NavigationControlSeer(Node):
             "seer_api": navigation.robot_task_gotarget_req,
             "request": {"id": _destination},
         }
-        sent_api_goal = self.processing_modbus_client(resquest_seer)
-        self.get_logger().info('position: "%s"' % (request_order["position"]))
+        # sent_api_goal = self.processing_modbus_client(resquest_seer)
+        self.working_robot = True
+        self.get_logger().info('position: "%s"' % (_destination))
         goal_handle.succeed()
         result = Mission.Result()
 
-        if _destination != self.current_position:
-            self.get_logger().info('false position: "%s"' % (_destination))
-            result.success = False
-        else:
-            result.success = True
+        _wait_robot_moving = True
+        while _wait_robot_moving:
+
+            self.get_logger().info('position: "%s"' % ("on looop"))
+            # self.working_robot = True
+            # if self.check_error():
+            #     result.success = False
+            #     _wait_robot_moving = False
+            time.sleep(5)
+            if not self.check_arrival(_destination):
+                self.get_logger().info('false position: "%s"' % (_destination))
+                result.success = False
+            else:
+                _wait_robot_moving = False
+                result.success = True
 
         # {"id": "lm23"}
         # time.sleep(2)
@@ -97,19 +120,41 @@ class NavigationControlSeer(Node):
         #     )
         #     goal_handle.publish_feedback(feedback_msg)
         #     time.sleep(1)
+        self.working_robot = False
         feedback_msg.operating_status = "sent_api_seer"
         goal_handle.publish_feedback(feedback_msg)
         return result
 
-    def check_target(self, data_status: dict, target: str):
+    def pause_navigation(self):
+        resquest_seer = {
+            "seer_api": navigation.robot_task_pause_req,
+            "request": {},
+        }
+        return resquest_seer
+
+    def resume_navigation(self):
+        resquest_seer = {
+            "seer_api": navigation.robot_task_resume_req,
+            "request": {},
+        }
+        return resquest_seer
+
+    def check_arrival(self, target: str):
+        return True
         # time.sleep(1)
-        if data_status["task_status"] == 4:
-            if (data_status["current_station"]) == target:
+        if self.seer_status["task_status"] == TaskStatus.ARRIVE.value:
+            if (self.seer_status["current_station"]) == target:
                 return True
             else:
                 return False
         else:
             return False
+
+    def check_error(self):
+        # time.sleep(1)
+        if self.seer_status["task_status"] == TaskStatus.ERROR.value:
+            return True
+        return False
 
     def processing_modbus_client(self, _request_body):
         req = CommonRequest.Request()
@@ -126,13 +171,19 @@ class NavigationControlSeer(Node):
         return None
 
     def seer_callback(self, msg):
-        _seer_msg = msg.data
+        _seer_msg = eval(msg.data)
+        self.seer_status = _seer_msg
 
     def comfirm_moving_collision(self):
+        # request_body = {
+        #     # "robot_code": "robot_2",
+        #     "position_collision": self.seer_status["area_ids"],
+        #     "map_code": self.seer_status["current_map"],
+        # }
         request_body = {
             # "robot_code": "robot_2",
-            "position_collision": ["Tmh"],
-            "map_code": "pickup_location",
+            "position_collision": ["dasd"],
+            "map_code": "pickup_locations",
         }
         try:
             res = requests.post(
@@ -150,10 +201,11 @@ class NavigationControlSeer(Node):
             return None
 
     def main_loop(self):
-        pass
-        # self.comfirm_moving_collision()
-        # response_modbus = self.frame_sent_modbus("up")
-        # self.get_logger().info('response_modbus: "%s"' "loop run")
+        if self.working_robot:
+            # pass
+            # self.comfirm_moving_collision()
+            # response_modbus = self.frame_sent_modbus("up")
+            self.get_logger().error('main: "%s"' "loop run")
 
 
 def main(args=None):

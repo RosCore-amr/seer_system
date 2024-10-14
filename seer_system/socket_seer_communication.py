@@ -191,7 +191,7 @@ class SockerControlSeer(Node):
         )
         msg.data = str(_value)
         self.seer_response_publisher_.publish(msg)
-        # self.get_logger().info('_value: "%s"' % _value)
+        self.get_logger().info('_value: "%s"' % _value)
 
     def main_loop(self):
         # self.read_seer_response()
