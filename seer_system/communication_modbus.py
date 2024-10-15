@@ -10,15 +10,16 @@ from action_interfaces_msg.action import Fibonacci
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 import asyncio
-from pymodbus.client import ModbusSerialClient, ModbusTcpClient
-from pymodbus.server.async_io import StartAsyncSerialServer
-from pymodbus.transaction import ModbusRtuFramer, ModbusSocketFramer
-from pymodbus.datastore import (
-    ModbusSlaveContext,
-    ModbusServerContext,
-    ModbusSequentialDataBlock,
-    ModbusSparseDataBlock,
-)
+import sys
+import serial
+
+#add logging capability
+import logging
+
+import modbus_tk
+import modbus_tk.defines as cst
+import modbus_tk.modbus_rtu as modbus_rtu
+
 from std_msgs.msg import String
 from robot_interfaces.srv import CommonRequest
 
@@ -40,7 +41,7 @@ class ModbusProcess(Node):
         )
 
         self.port = "/dev/ttyUSB0"
-        # self.initial_protocol()
+        self.initial_protocol()
 
     def initial_protocol(self):
         if self.connect_serial():
@@ -48,16 +49,11 @@ class ModbusProcess(Node):
 
     def connect_serial(self):
         try:
-            self.target = ModbusSerialClient(
-                port=self.port,
-                framer=ModbusRtuFramer,
-                baudrate=115200,
-                bytesize=8,
-                parity="N",
-                stopbits=1,
-            )
+            self.target = modbus_rtu.RtuMaster(serial.Serial(port=self.port, baudrate=115200, bytesize=8, parity='N', stopbits=1, xonxoff=0))
             # self.target.serve_forever()
-            self.target.connect()
+             self.target.set_timeout(5.0)
+             self.target.set_verbose(True)
+            # self.target.connect()
             return True
             # Robot.error = None
             # handleLog(f"RTU Master connect Success", type=log)
@@ -68,12 +64,13 @@ class ModbusProcess(Node):
             time.sleep(2)
             self.connect_serial()
 
-    def readValue(self, address: int, count: int, slave: int):
+    def readValue(self, _dress: int, _count: int, _slave: int):
         # if self.target.is_socket_open():
         try:
-            result = self.target.read_holding_registers(
-                address=address, count=count, slave=slave
-            )
+            # result = self.target.read_holding_registers(
+            #     address=address, count=count, slave=slave
+            # )
+            result = self.target.execute(_slave, cst.READ_HOLDING_REGISTERS, _dress, _count)
             if not result.isError():
                 msg = ""
                 for index, value in enumerate(result.registers):
@@ -88,56 +85,52 @@ class ModbusProcess(Node):
 
     def robot_read_input_registers(self, _address: int, _count: int, _slave: int):
         try:
-            result = self.target.read_input_registers(
-                address=_address, count=_count, slave=_slave
-            )
+            # result = self.target.read_input_registers(
+            #     address=_address, count=_count, slave=_slave
+            # )
+            result = master.execute(_slave, cst.READ_INPUT_REGISTERS, _address, _count)
             return result
-            _sensor_up = result.registers[0]
-            _sensor_down = result.registers[1]
+            # _sensor_up = result.registers[0]
+            # _sensor_down = result.registers[1]
         except:
             return None
 
     def writeValue(self, _address: int, _value: int, _slave: int):
         # if self.target.is_socket_open():
         try:
-            result = self.target.write_register(
-                address=_address, value=_value, slave=_slave
-            )
-        except:
-            if not result.isError():
-                pass
-                # msg = f"RTU Master write address: {address}, value: {value}, slave: {slave} success"
-                # Robot.error = None
-                # handleLog(msg=msg, type=log)
-            elif result.isError():
-                msg = "RTU Master write fail"
-                # Robot.error = msg
-                # handleLog(msg=msg, type="A")
+            # result = self.target.write_register(
+            #     address=_address, value=_value, slave=_slave
+            # )
+             result = self.targe.execute(_slave, cst.WRITE_SINGLE_REGISTER, _address, output_value=_value)
+            return = True
+        
+        except modbus_tk.modbus.ModbusError as exc:
+            return = False
 
     def modbus_contact_srv(self, request, response):
         _value_req = eval(request.msg_request)
-        # _sent_modbus = self.writeValue(
-        #     _value_req["address"],
-        #     _value_req["value"],
-        #     _value_req["slave"],
-        # )
-        self.get_logger().info('_value_req: "%s"' % _value_req["address"])
-        data_response = {"minhdeptrai": "ok"}
+        _respon_modbus = self.writeValue(
+            _value_req["address"],
+            _value_req["value"],
+            _value_req["slave"],
+        )
+        self.get_logger().info('_sent_modbus: "%s"' % _respon_modbus)
+        data_response = {"code": _respon_modbus}
         response.msg_response = str(data_response)
         return response
 
     def pub_sensor_(self):
-        # _read_sensor_lift = self.robot_read_input_registers(5, 2, 1)
+        _read_sensor_lift = self.robot_read_input_registers(5, 2, 1)
 
         msg = String()
-        # _msg = {
-        #     "sensor_up": _read_sensor_lift.registers[0],
-        #     "sensor_down": _read_sensor_lift.registers[1],
-        # }
         _msg = {
-            "sensor_up": 0,
-            "sensor_down": 0,
+            "sensor_up": _read_sensor_lift.registers[0],
+            "sensor_down": _read_sensor_lift.registers[1],
         }
+        # _msg = {
+        #     "sensor_up": 0,
+        #     "sensor_down": 0,
+        # }
         msg.data = str(_msg)
         self.sensor_lift_publisher_.publish(msg)
 
