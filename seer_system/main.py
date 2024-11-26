@@ -4,7 +4,11 @@ from flask_restx import Api, Resource
 
 app = Flask(__name__)
 api = Api(
-    app, title="My API", description="This is a sample API with Swagger documentation"
+    app,
+    title="Robot API",
+    openapi_url="/openapi.json",
+    docs_url="/docs",
+    description="Buffer Robot Swagger",
 )
 
 
